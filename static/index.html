@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vertical Clipper</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Vertical Clipper</h1>
+    <p class="muted">Turn a long 16:9 video into vertical 9:16 clips that follow the speaker.</p>
+  </header>
+
+  <main>
+    <section class="card" id="add-section">
+      <h2>1. Add a video</h2>
+      <form id="url-form" class="row">
+        <input id="url-input" type="url" placeholder="Paste a YouTube link" required maxlength="2048">
+        <button type="submit">Load from YouTube</button>
+      </form>
+      <p class="or">or</p>
+      <form id="upload-form" class="row">
+        <input id="file-input" type="file" accept=".mp4,.mov,.mkv,.webm,video/*" required>
+        <button type="submit">Upload video</button>
+      </form>
+      <div id="progress" class="progress hidden">
+        <div class="bar"><div id="progress-fill"></div></div>
+        <p id="progress-text" class="muted"></p>
+      </div>
+      <p id="global-error" class="error hidden"></p>
+    </section>
+
+    <section class="card hidden" id="editor">
+      <div class="editor-head">
+        <div>
+          <h2 id="video-title"></h2>
+          <p class="muted" id="video-meta"></p>
+        </div>
+        <div class="actions">
+          <button id="export-all" type="button">Export all clips</button>
+          <a id="bundle-link" class="button-link hidden" href="#">Download all (.zip)</a>
+        </div>
+      </div>
+
+      <video id="player" controls preload="metadata"></video>
+      <p class="muted small">Adjust the start and end of each clip, then press <strong>Save timing</strong>. Export renders a 1080 × 1920 file that follows the speaker's face.</p>
+
+      <div class="actions">
+        <button id="add-clip" type="button" class="secondary">Add clip from current time</button>
+      </div>
+
+      <div id="clips"></div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
