@@ -1,19 +1,8 @@
----
-title: Vertical Clipper
-emoji: 🎬
-colorFrom: blue
-colorTo: green
-sdk: docker
-app_port: 7860
-pinned: false
-short_description: Turn 16:9 videos into 9:16 clips that follow the speaker
----
-
 # Vertical Clipper
 
 **Live demo:** _link to be added after deployment (see section 5b)_
 
-> The demo runs on a free server. It sleeps when idle (the first visit can take about a minute to wake up), stores files only for a few hours, and handles one or two videos at a time. **YouTube sometimes blocks downloads from hosting servers.** If you see that message, download the video yourself and use **Upload video**.
+> The demo runs on a free server. Files are kept for a few hours and the server handles a few videos at a time. **YouTube sometimes blocks downloads from hosting servers.** If you see that message, download the video yourself and use **Upload video**.
 
 Turn a long 16:9 video (a YouTube link or an uploaded file) into vertical 9:16 clips, ready for Shorts, Reels and TikTok. The tool splits the video into clips automatically, lets you adjust each clip's start and end, and crops every clip so the speaker stays in frame.
 
@@ -79,19 +68,22 @@ Copy `.env.example` to `.env` to see the options. The app reads them as environm
 | `CLIPPER_MAX_ACTIVE_JOBS` | `4` | Queued or running jobs allowed at once; more get a "busy" message |
 | `FFMPEG_PATH` | (auto) | Use a specific FFmpeg program |
 
-## 5b. Deploy a free live copy (Hugging Face Spaces)
+## 5b. Deploy a free live copy (Oracle Cloud Always Free + HTTPS)
 
-1. Create a free account at huggingface.co and a new **Space** with SDK **Docker** and visibility **Public**.
-2. Create a write token at huggingface.co/settings/tokens (keep it private).
-3. Clone your Space, copy this project into it, and push:
-   ```
-   git remote add space https://huggingface.co/spaces/<your-user>/<space-name>
-   git push space master:main
-   ```
-   Enter your Hugging Face username and the token as the password.
-4. Wait for the build to finish, then open the Space URL. `/api/health` should return `"ok": true`.
+You need an Oracle Cloud account (it asks for a card to verify you, but the Always Free resources are not charged) and a free DuckDNS name for HTTPS.
 
-The README front matter at the top tells Spaces which port to use.
+1. **Free domain:** at https://www.duckdns.org sign in and create a name such as `vertical-clipper` → `vertical-clipper.duckdns.org`. Note the IP address you'll get in step 3.
+2. **Create the VM:** in the Oracle console, create a Compute instance with the **Ubuntu 22.04** image and the **Always Free** shape (Ampere A1, 2–4 OCPU, 12–24 GB RAM is plenty). Save the SSH key it asks you to download.
+3. **Open web ports:** in the instance's subnet *Security List*, add ingress rules for TCP ports **80** and **443** from `0.0.0.0/0`. Copy the instance's public IP and set it as the DuckDNS address.
+4. **Connect:** `ssh -i <key-file> ubuntu@<public-ip>`
+5. **Run the setup script** (one command, takes several minutes the first time):
+   ```
+   curl -fsSL https://raw.githubusercontent.com/Abdul-hadi13/vertical_clipper/master/deploy/setup-oracle-ubuntu.sh -o setup.sh
+   bash setup.sh vertical-clipper.duckdns.org
+   ```
+6. Open `https://vertical-clipper.duckdns.org`. The certificate is issued automatically on the first visit, once DNS has updated.
+
+To update later: `cd ~/vertical_clipper && git pull && sudo docker compose -f docker-compose.server.yml up -d --build`.
 
 ## 6. Project layout
 

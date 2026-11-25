@@ -1,0 +1,32 @@
+# Production setup for a server (Oracle Cloud VM or similar).
+# Caddy listens on ports 80/443, gets an HTTPS certificate for $DOMAIN automatically,
+# and forwards requests to the app. The app itself is not exposed directly.
+#
+# Start with:  docker compose -f docker-compose.server.yml up -d --build
+# (DOMAIN is read from a .env file next to this file; deploy/setup-oracle-ubuntu.sh writes it.)
+services:
+  clipper:
+    build: .
+    restart: unless-stopped
+    volumes:
+      - clipper-data:/home/clipper/work
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - clipper
+    environment:
+      - DOMAIN=${DOMAIN:?Set DOMAIN to your public hostname}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  clipper-data:
+  caddy-data:
+  caddy-config:
