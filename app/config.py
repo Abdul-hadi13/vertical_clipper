@@ -20,6 +20,10 @@ MAX_SOURCE_HEIGHT = 1080
 ALLOWED_EXTENSIONS = {".mp4", ".mov", ".mkv", ".webm"}
 ALLOWED_YOUTUBE_HOSTS = {"youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"}
 
+# Public-demo safeguards: old files are deleted, and the queue is capped
+RETENTION_HOURS = float(os.environ.get("CLIPPER_RETENTION_HOURS", "12"))
+MAX_ACTIVE_JOBS = int(os.environ.get("CLIPPER_MAX_ACTIVE_JOBS", "4"))
+
 # Automatic splitting
 AUTO_SPLIT_THRESHOLD = 27.0  # PySceneDetect content-change threshold
 MIN_AUTO_CLIP_SEC = 5.0

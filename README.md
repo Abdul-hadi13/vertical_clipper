@@ -1,4 +1,19 @@
+---
+title: Vertical Clipper
+emoji: 🎬
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+pinned: false
+short_description: Turn 16:9 videos into 9:16 clips that follow the speaker
+---
+
 # Vertical Clipper
+
+**Live demo:** _link to be added after deployment (see section 5b)_
+
+> The demo runs on a free server. It sleeps when idle (the first visit can take about a minute to wake up), stores files only for a few hours, and handles one or two videos at a time. **YouTube sometimes blocks downloads from hosting servers.** If you see that message, download the video yourself and use **Upload video**.
 
 Turn a long 16:9 video (a YouTube link or an uploaded file) into vertical 9:16 clips, ready for Shorts, Reels and TikTok. The tool splits the video into clips automatically, lets you adjust each clip's start and end, and crops every clip so the speaker stays in frame.
 
@@ -58,9 +73,25 @@ Copy `.env.example` to `.env` to see the options. The app reads them as environm
 | Variable | Default | Meaning |
 |---|---|---|
 | `CLIPPER_WORK_DIR` | `./workdir` | Where videos and clips are stored |
-| `CLIPPER_MAX_UPLOAD_MB` | `2048` | Largest upload accepted |
-| `CLIPPER_MAX_SOURCE_MINUTES` | `240` | Longest source video accepted |
+| `CLIPPER_MAX_UPLOAD_MB` | `2048` (Docker image: `500`) | Largest upload accepted |
+| `CLIPPER_MAX_SOURCE_MINUTES` | `240` (Docker image: `30`) | Longest source video accepted |
+| `CLIPPER_RETENTION_HOURS` | `12` | Files not touched for this long are deleted |
+| `CLIPPER_MAX_ACTIVE_JOBS` | `4` | Queued or running jobs allowed at once; more get a "busy" message |
 | `FFMPEG_PATH` | (auto) | Use a specific FFmpeg program |
+
+## 5b. Deploy a free live copy (Hugging Face Spaces)
+
+1. Create a free account at huggingface.co and a new **Space** with SDK **Docker** and visibility **Public**.
+2. Create a write token at huggingface.co/settings/tokens (keep it private).
+3. Clone your Space, copy this project into it, and push:
+   ```
+   git remote add space https://huggingface.co/spaces/<your-user>/<space-name>
+   git push space master:main
+   ```
+   Enter your Hugging Face username and the token as the password.
+4. Wait for the build to finish, then open the Space URL. `/api/health` should return `"ok": true`.
+
+The README front matter at the top tells Spaces which port to use.
 
 ## 6. Project layout
 

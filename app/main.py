@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import math
 import re
+import threading
+import time
 import zipfile
 from pathlib import Path
 from typing import Callable
@@ -16,11 +18,13 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import (
     ALLOWED_EXTENSIONS,
+    MAX_ACTIVE_JOBS,
     MAX_CLIP_SEC,
     MAX_SOURCE_MINUTES,
     MAX_UPLOAD_BYTES,
     MAX_UPLOAD_MB,
     MIN_CLIP_SEC,
+    RETENTION_HOURS,
     STATIC_DIR,
     WORK_DIR,
     ffmpeg_path,
@@ -43,6 +47,24 @@ Report = Callable[[float, str | None], None]
 
 
 # ---------- helpers ----------
+
+def _purge_loop() -> None:
+    """Delete old videos at startup and then once an hour, so disk use stays bounded on a public host."""
+    while True:
+        removed = store.purge_older_than(time.time() - RETENTION_HOURS * 3600)
+        if removed:
+            print(f"Cleanup removed {removed} old video(s)")
+        time.sleep(3600)
+
+
+threading.Thread(target=_purge_loop, name="cleanup", daemon=True).start()
+
+
+def _check_capacity() -> None:
+    """Refuse new work when the queue is full, so a public server cannot be overwhelmed."""
+    if jobs.active_count() >= MAX_ACTIVE_JOBS:
+        raise HTTPException(429, "The server is busy with other videos. Please try again in a few minutes.")
+
 
 def _check_id(value: str) -> None:
     if not ID_PATTERN.match(value):
@@ -216,6 +238,7 @@ def health() -> dict:
 
 @app.post("/api/videos/upload", status_code=202)
 async def upload_video(file: UploadFile = File(...)) -> dict:
+    _check_capacity()
     suffix = Path(file.filename or "").suffix.lower()
     if suffix not in ALLOWED_EXTENSIONS:
         raise HTTPException(400, f"Unsupported file type. Use one of: {', '.join(sorted(ALLOWED_EXTENSIONS))}")
@@ -241,6 +264,7 @@ async def upload_video(file: UploadFile = File(...)) -> dict:
 
 @app.post("/api/videos/from-url", status_code=202)
 def video_from_url(body: UrlRequest) -> dict:
+    _check_capacity()
     try:
         url = validate_youtube_url(body.url)
     except ValueError as exc:
@@ -318,6 +342,7 @@ def add_clip(video_id: str, body: ClipUpdate) -> dict:
 
 @app.post("/api/videos/{video_id}/clips/{clip_id}/export", status_code=202)
 def export_one(video_id: str, clip_id: str) -> dict:
+    _check_capacity()
     video = _get_video(video_id)
     if video["status"] != "ready":
         raise HTTPException(409, "The video is not ready yet")
@@ -328,6 +353,7 @@ def export_one(video_id: str, clip_id: str) -> dict:
 
 @app.post("/api/videos/{video_id}/export-all", status_code=202)
 def export_all(video_id: str) -> dict:
+    _check_capacity()
     video = _get_video(video_id)
     if video["status"] != "ready":
         raise HTTPException(409, "The video is not ready yet")

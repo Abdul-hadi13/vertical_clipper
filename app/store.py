@@ -60,6 +60,26 @@ class Store:
             mutate(record)
             self._save(record)
 
+    def purge_older_than(self, cutoff_epoch: float) -> int:
+        """Delete videos not changed since cutoff_epoch (seconds since 1970). Returns how many were removed.
+
+        meta.json is rewritten on every change, so its modification time is "last activity".
+        Videos still being processed are never deleted.
+        """
+        removed = 0
+        with self._lock:
+            for video_id in list(self._videos):
+                if self._videos[video_id].get("status") == "processing":
+                    continue
+                try:
+                    last_activity = (self.video_dir(video_id) / "meta.json").stat().st_mtime
+                except OSError:
+                    last_activity = 0.0
+                if last_activity < cutoff_epoch:
+                    self.discard(video_id)
+                    removed += 1
+        return removed
+
     def discard(self, video_id: str) -> None:
         with self._lock:
             self._videos.pop(video_id, None)

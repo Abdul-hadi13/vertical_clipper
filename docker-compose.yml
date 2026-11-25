@@ -2,9 +2,7 @@ services:
   clipper:
     build: .
     ports:
-      - "8000:8000"
+      - "8000:7860"       # open http://localhost:8000
     volumes:
-      - ./workdir:/data   # uploads, downloads and exported clips are kept here
-    environment:
-      - CLIPPER_MAX_UPLOAD_MB=2048
+      - ./workdir:/home/clipper/work   # uploads, downloads and exported clips are kept here
     restart: unless-stopped

@@ -40,6 +40,11 @@ class Jobs:
         self._pool.submit(self._run, job_id, fn, args)
         return job_id
 
+    def active_count(self) -> int:
+        """Jobs that are queued or running."""
+        with self._lock:
+            return sum(1 for job in self._jobs.values() if job["status"] in ("queued", "running"))
+
     def get(self, job_id: str) -> dict[str, Any] | None:
         with self._lock:
             job = self._jobs.get(job_id)

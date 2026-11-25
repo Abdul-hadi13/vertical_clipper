@@ -20,6 +20,20 @@ def validate_youtube_url(url: str) -> str:
     return cleaned
 
 
+BOT_CHECK_MARKERS = ("not a bot", "sign in to confirm", "http error 429")
+
+
+def _youtube_error_message(exc: Exception) -> str:
+    """Turn yt-dlp's technical errors into a message a visitor can act on."""
+    text = str(exc)
+    if any(marker in text.lower() for marker in BOT_CHECK_MARKERS):
+        # Hosting providers often share IP addresses that YouTube challenges. Uploading avoids this.
+        return ("YouTube blocked the download from this server. "
+                "Please download the video yourself and use 'Upload video' instead.")
+    return ("The YouTube download was interrupted, usually by a slow or unstable connection. "
+            f"Please try again. ({text.replace('ERROR: ', '')[:200]})")
+
+
 def download_youtube(
     url: str,
     folder: Path,
@@ -52,7 +66,10 @@ def download_youtube(
     }
 
     with yt_dlp.YoutubeDL(options) as ydl:
-        info = ydl.extract_info(url, download=False)
+        try:
+            info = ydl.extract_info(url, download=False)
+        except yt_dlp.utils.DownloadError as exc:
+            raise ValueError(_youtube_error_message(exc)) from exc
         if info.get("is_live") or info.get("was_live"):
             raise ValueError("Live streams cannot be used. Please choose a regular video.")
         if (info.get("duration") or 0) > MAX_SOURCE_MINUTES * 60:
@@ -60,10 +77,7 @@ def download_youtube(
         try:
             ydl.download([url])
         except yt_dlp.utils.DownloadError as exc:
-            raise ValueError(
-                "The YouTube download was interrupted, usually by a slow or unstable connection. "
-                f"Please try again. ({str(exc).replace('ERROR: ', '')[:200]})"
-            ) from exc
+            raise ValueError(_youtube_error_message(exc)) from exc
         title = str(info.get("title") or "YouTube video")
 
     files = [p for p in folder.glob("source.*") if p.suffix.lower() in ALLOWED_EXTENSIONS]
