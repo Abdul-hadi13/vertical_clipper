@@ -33,6 +33,7 @@ class Jobs:
                 "status": "queued",
                 "progress": 0.0,
                 "message": "Waiting to start",
+                "detail": None,  # {"total": n, "done": k, "current": i} when the job works on clips
                 "result": None,
                 "error": None,
             }
@@ -51,10 +52,12 @@ class Jobs:
     def _run(self, job_id: str, fn: Callable[..., Any], args: tuple) -> None:
         self._update(job_id, status="running", message="Starting")
 
-        def report(progress: float, message: str | None = None) -> None:
+        def report(progress: float, message: str | None = None, detail: dict | None = None) -> None:
             fields: dict[str, Any] = {"progress": max(0.0, min(1.0, progress))}
             if message is not None:
                 fields["message"] = message
+            if detail is not None:
+                fields["detail"] = detail
             self._update(job_id, **fields)
 
         try:

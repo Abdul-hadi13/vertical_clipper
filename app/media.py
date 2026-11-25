@@ -7,6 +7,7 @@ from pathlib import Path
 
 import cv2
 
+
 @dataclass(frozen=True)
 class VideoInfo:
     width: int
@@ -38,11 +39,18 @@ def crop_width_for(source_height: int) -> int:
     return (round(source_height * 9 / 16)) & ~1
 
 
-def validate_landscape(info: VideoInfo) -> None:
-    if crop_width_for(info.height) > info.width:
-        raise ValueError("The video must be landscape (16:9 or wider) so it can be cropped to 9:16.")
-    if info.width / info.height > 2.5:
-        raise ValueError("The video is too wide to convert cleanly. Use a 16:9 video.")
+MIN_ASPECT = 1.7   # 16:9 is about 1.78; 1.85 (cinema widescreen) is still accepted
+MAX_ASPECT = 1.9
+
+
+def validate_widescreen(info: VideoInfo) -> None:
+    """The test asks for 16:9 input. Other shapes would need different crop rules, so they are refused."""
+    aspect = info.width / info.height
+    if not (MIN_ASPECT <= aspect <= MAX_ASPECT):
+        raise ValueError(
+            f"This video is {info.width}x{info.height}. Please use a 16:9 widescreen video "
+            "(for example 1920x1080 or 1280x720)."
+        )
 
 
 def crop_left_edge(center_x: float, info: VideoInfo) -> int:

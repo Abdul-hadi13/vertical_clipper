@@ -45,6 +45,10 @@ def download_youtube(
         "no_warnings": True,
         "ffmpeg_location": ffmpeg_path(),
         "progress_hooks": [on_progress],
+        # Slow or flaky connections often drop mid-download; allow longer waits and more retries.
+        "socket_timeout": 60,
+        "retries": 10,
+        "fragment_retries": 10,
     }
 
     with yt_dlp.YoutubeDL(options) as ydl:
@@ -53,7 +57,13 @@ def download_youtube(
             raise ValueError("Live streams cannot be used. Please choose a regular video.")
         if (info.get("duration") or 0) > MAX_SOURCE_MINUTES * 60:
             raise ValueError(f"This video is longer than the {MAX_SOURCE_MINUTES:.0f}-minute limit.")
-        ydl.download([url])
+        try:
+            ydl.download([url])
+        except yt_dlp.utils.DownloadError as exc:
+            raise ValueError(
+                "The YouTube download was interrupted, usually by a slow or unstable connection. "
+                f"Please try again. ({str(exc).replace('ERROR: ', '')[:200]})"
+            ) from exc
         title = str(info.get("title") or "YouTube video")
 
     files = [p for p in folder.glob("source.*") if p.suffix.lower() in ALLOWED_EXTENSIONS]

@@ -28,7 +28,7 @@ from .config import (
 from .exporter import export_clip
 from .ingest import download_youtube, validate_youtube_url
 from .jobs import Jobs, public_error
-from .media import VideoInfo, probe, validate_landscape
+from .media import VideoInfo, probe, validate_widescreen
 from .schemas import ClipUpdate, UrlRequest
 from .splitter import build_clips, detect_scenes
 from .store import Store
@@ -81,8 +81,8 @@ def _mark_error(video_id: str, exc: BaseException) -> None:
 
 def _progress_slice(report: Report, base: float, span: float, label: str) -> Report:
     """Map a 0..1 progress from one step onto part of the overall job."""
-    def inner(fraction: float, message: str | None = None) -> None:
-        report(base + span * fraction, message or label)
+    def inner(fraction: float, message: str | None = None, detail: dict | None = None) -> None:
+        report(base + span * fraction, message or label, detail)
     return inner
 
 
@@ -92,7 +92,7 @@ def _analyze_source(report: Report, video_id: str, source: Path) -> dict:
     try:
         report(0.05, "Reading video details")
         info = probe(source)
-        validate_landscape(info)
+        validate_widescreen(info)
         if info.duration > MAX_SOURCE_MINUTES * 60:
             raise ValueError(f"This video is longer than the {MAX_SOURCE_MINUTES:.0f}-minute limit.")
 
@@ -104,6 +104,7 @@ def _analyze_source(report: Report, video_id: str, source: Path) -> dict:
             {"id": uuid4().hex, "number": n, "start": c["start"], "end": c["end"], "output": None}
             for n, c in enumerate(build_clips(scenes, info.duration), start=1)
         ]
+        report(0.95, f"Created {len(clips)} clips", {"total": len(clips), "done": len(clips), "current": None})
 
         def apply(record: dict) -> None:
             record.update(
@@ -167,11 +168,16 @@ def _export_all_job(report: Report, video_id: str) -> dict:
     if not clips:
         raise ValueError("There are no clips to export.")
 
+    total = len(clips)
     for index, clip in enumerate(clips):
-        label = f"Exporting clip {index + 1} of {len(clips)}"
-        step = 1 / len(clips)
+        label = f"Exporting clip {index + 1} of {total}"
+        step = 1 / total
+        # Tell the page which clip is being rendered and how many are finished.
+        report(index * step, label, {"total": total, "done": index, "current": index})
         _export_one(video_id, clip["id"], clip["start"], clip["end"], info,
                     _progress_slice(report, index * step, step, label))
+        report((index + 1) * step, f"Finished clip {index + 1} of {total}",
+               {"total": total, "done": index + 1, "current": None})
 
     bundle_relative = "exports/all-clips.zip"
     bundle = store.video_dir(video_id) / bundle_relative

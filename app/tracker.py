@@ -35,6 +35,15 @@ def smooth_centers(
     return smoothed
 
 
+def backfill_leading(samples: list[tuple[float, float]], index: int) -> list[tuple[float, float]]:
+    """Before the first detected face (at `index`), aim at that face rather than the frame centre.
+
+    This stops the crop from starting by sliding over to the speaker.
+    """
+    target = samples[index][1]
+    return [(t, target) if i < index else (t, c) for i, (t, c) in enumerate(samples)]
+
+
 def track_centers(
     source: str,
     info: VideoInfo,
@@ -58,6 +67,7 @@ def track_centers(
 
     samples: list[tuple[float, float]] = []
     last_center = info.width / 2
+    first_seen_index: int | None = None  # index into samples of the first face detection
     try:
         cap.set(cv2.CAP_PROP_POS_FRAMES, first)
         total = max(1, last - first)
@@ -73,6 +83,8 @@ def track_centers(
                 if len(faces):
                     x, _, w, _ = max(faces, key=lambda f: f[2] * f[3])
                     last_center = (x + w / 2) / scale
+                    if first_seen_index is None:
+                        first_seen_index = len(samples)
                 samples.append((offset / info.fps, last_center))
             if report and offset % 30 == 0:
                 report(0.5 * offset / total)
@@ -81,6 +93,8 @@ def track_centers(
 
     if not samples:
         samples = [(0.0, info.width / 2)]
+    elif first_seen_index is not None:
+        samples = backfill_leading(samples, first_seen_index)
     smoothed = smooth_centers(samples, deadzone=DEADZONE_FRACTION * info.width)
     times = np.array([t for t, _ in smoothed])
     centers = np.array([c for _, c in smoothed])

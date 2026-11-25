@@ -66,6 +66,42 @@ button:disabled { opacity: 0.5; cursor: wait; }
 .bar { height: 10px; background: #e5e9f0; border-radius: 999px; overflow: hidden; }
 #progress-fill { height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
 
+.tiles { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.tile {
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: #e5e9f0;
+  border-radius: 8px;
+  transition: background-color 0.35s ease, color 0.35s ease, transform 0.35s ease;
+  animation: pop-in 0.3s ease both;
+}
+.tile.done {
+  background: #22c55e;
+  color: #fff;
+  transform: scale(1.02);
+}
+.tile.current {
+  background: var(--accent);
+  color: #fff;
+  animation: pulse 0.9s ease-in-out infinite;
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.4); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.55); }
+  50%      { box-shadow: 0 0 0 7px rgba(37, 99, 235, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tile, .tile.current { animation: none; transition: none; }
+}
+
 .editor-head { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
 

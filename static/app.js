@@ -32,15 +32,47 @@ function setBusy(busy) {
   document.querySelectorAll("#add-section button").forEach((b) => (b.disabled = busy));
 }
 
-function showProgress(fraction, message) {
+function showProgress(fraction, message, detail) {
   $("progress").classList.remove("hidden");
   $("progress-fill").style.width = `${Math.round(fraction * 100)}%`;
   $("progress-text").textContent = message || "";
+  renderTiles(detail);
 }
 
 function hideProgress() {
   $("progress").classList.add("hidden");
   $("progress-fill").style.width = "0";
+  renderTiles(null);
+}
+
+// One tile per clip: grey = waiting, pulsing = working now, green = finished.
+let tileTotal = 0;
+function renderTiles(detail) {
+  const box = $("clip-tiles");
+  const count = $("clip-count");
+  if (!detail || !detail.total) {
+    box.classList.add("hidden");
+    box.replaceChildren();
+    count.textContent = "";
+    tileTotal = 0;
+    return;
+  }
+  box.classList.remove("hidden");
+  if (detail.total !== tileTotal) {
+    tileTotal = detail.total;
+    box.replaceChildren(...Array.from({ length: detail.total }, (_, i) => {
+      const tile = document.createElement("span");
+      tile.className = "tile";
+      tile.textContent = String(i + 1);
+      tile.style.animationDelay = `${Math.min(i * 25, 800)}ms`; // staggered pop-in
+      return tile;
+    }));
+  }
+  [...box.children].forEach((tile, i) => {
+    tile.classList.toggle("done", i < detail.done);
+    tile.classList.toggle("current", detail.current === i);
+  });
+  count.textContent = `${detail.done} of ${detail.total} clips finished`;
 }
 
 // Polls a background job until it finishes. Resolves with the job result, rejects with its error.
@@ -49,7 +81,7 @@ function watchJob(jobId) {
     const timer = setInterval(async () => {
       try {
         const job = await api(`/api/jobs/${jobId}`);
-        showProgress(job.progress, job.message);
+        showProgress(job.progress, job.message, job.detail);
         if (job.status === "done") {
           clearInterval(timer);
           resolve(job.result);
